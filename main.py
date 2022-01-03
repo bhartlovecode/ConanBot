@@ -80,7 +80,7 @@ async def on_message(message):
             else:
                 if (msg.content == "y" or msg.content == "Y"):
                     dbadd(name, encIP, encPassword, message.author)
-                    embed = discord.Embed(title = "Added Server", de mOscription = server_info, color = get_color("green"))
+                    embed = discord.Embed(title = "Added Server", description = server_info, color = get_color("green"))
                     await channel.send(embed = embed)
                 else:
                     embed = discord.Embed(description = wrap_message("Cancled server add request"), color = get_color("red"))
@@ -94,7 +94,7 @@ async def on_message(message):
             await message.channel.send(embed = embed)
         else:
             name = split[1]
-            success, output = dbget(name)  
+            success, output, _, _ = dbget(name)  
             if success:
                 embed = discord.Embed(title = name, description = output, color = get_color("blue"))
                 await message.channel.send(embed = embed)
@@ -110,7 +110,7 @@ async def on_message(message):
             await message.channel.send(embed = embed)    
         else:
             name = split[1]
-            success, output = dbget(name)
+            success, output, _, _ = dbget(name)
             if success:
                 embed = discord.Embed(title = "Delete Server?", description = output + "\nY/N?", color = get_color("blue"))
                 await message.channel.send(embed = embed)
@@ -153,39 +153,55 @@ async def on_message(message):
     # update server 
     elif msg.startswith("$update_server"):
         author = message.author
+        channel = message.channel
         split = msg.split()
         name = split[1]
-        success, output = dbget(split[1])
+        success, output, values, columns = dbget(split[1])
         if success:
             # proper formatting
-            args = update_parser.parse_args(split[2:])
-            server_info = ""
-            print(type(args))
-            for arg in vars(args):
-                print(arg , getattr(args, arg))
-                if getattr(arg, args) != None:
-                    server_info += str(arg) + ": " + str(getattr(args, arg)) + "\n"
-            embed = discord.Embed(title = f"Update Server, {name}?", description = server_info + "\nY/N?", color = get_color("blue"))
-            await message.channel.send(embed = embed)
-            #dbupdate(name, args)
+            if (chkown(name, author)):
+                args = update_parser.parse_args(split[2:])
+                server_info = f"```arm\n{output}```\n**To Change:**\n"
+                embed = discord.Embed(title = f"Update Server: '{name}'?", description = "", color = get_color("blue"))
+                for key in columns:
+                    if key in args:
+                        print(str(getattr(args, key)))
+                        if getattr(args, key) != None:
+                            server_info += f"```yaml\n{key}: {str(getattr(args, key))}```"
+                embed = discord.Embed(title = f"Update Server: '{name}'?", description = server_info + "\nY/N?", color = get_color("blue"))
+                await message.channel.send(embed = embed)
+
+                # allow user to confirm or deny changes
+                def check(m):
+                    return (m.content == 'Y' or m.content == 'y' or m.content == 'N' or m.content == "n") and m.channel == channel and m.author == author
+
+                try:
+                    msg = await client.wait_for('message', check=check, timeout=60)
+                except asyncio.TimeoutError:
+                    embed = discord.Embed(description = wrap_message("Cancled server update request"), color = get_color("red"))
+                    await channel.send(embed = embed)
+                else:
+                    if (msg.content == "y" or msg.content == "Y"):
+                        dbupdate(name, args)
+                        success, output, _, _ = dbget(name)
+                        if success:
+                            embed = discord.Embed(title = "Updated Server", description = f"```yaml\n{output}```", color = get_color("green"))
+                            await channel.send(embed = embed)
+                        else:
+                            embed = discord.Embed(description = wrap_message("Error updating server info!"), color = get_color("red"))
+                            await channel.send(embed = embed)  
+                    else:
+                        embed = discord.Embed(description = wrap_message("Cancled server delete request"), color = get_color("red"))
+                        await channel.send(embed = embed) 
+
+            else:
+                embed = discord.Embed(description = wrap_message("Error updating server (you must own the server to update it"), 
+                color = get_color("red"))
+                await message.channel.send(embed = embed)
         else:
             # improper formatting
             embed = discord.Embed(title = name, description = output, color = get_color("red"))
-            await message.channel.send(embed = embed) 
-
-                
-        """
-        success, output = dbget(name)
-        if success:     
-            if (chkown(name, author)): 
-                print("Updating")
-            else:
-                embed = discord.Embed(title = name, description = wrap_message("Failed to update server info (you most own the server to update it"), 
-                color = get_color("red"))
-                await message.channel.send(embed = embed)       
-        else:
-            embed = discord.Embed(title = name, description = output, color = get_color("red"))
-            await message.channel.send(embed = embed)          
+            await message.channel.send(embed = embed)     
 
     
     elif message.content.startswith('$greet'):
@@ -197,6 +213,6 @@ async def on_message(message):
 
         msg = await client.wait_for('message', check=check)
         await channel.send('Hello {.author}!'.format(msg))
-        """
+        
 
 client.run(config('TOKEN'))
