@@ -89,17 +89,38 @@ def dbupdate(name, args):
   server = doc.get()
 
   if server.exists:
-    for arg in vars(args):
-      if str(getattr(args, arg)) != None:
-        if (str(getattr(args, arg)) == "ip" or str(getattr(args, arg)) == "password"):
-          encMessage = encrypt(str(getattr(args, arg)))
-          print(encMessage)
-          doc.update({str(arg): encMessage})
-        else:
-          doc.update({str(arg): str(getattr(args, arg))})
+    # check if we need to delete/add entry
+    if str(getattr(args, "name")) != "None":
+      _, _ , values, _ = dbget(name)
+      new_name = str(getattr(args, "name"))
+
+      # check if ip needs to be updated
+      if (str(getattr(args, "ip"))) != "None":
+        new_ip = encrypt(str(getattr(args, "ip")))
+      else:
+        new_ip = encrypt(values["ip"])
+
+      # check if password needs to be updated
+      if (str(getattr(args, "password"))) != "None":
+        new_password = encrypt(str(getattr(args, "password")))
+      else:
+        new_password = encrypt(values["password"])
+        
+      user = values["owner"]
+      dbadd(new_name, new_ip, new_password, user)
+      dbdelete(values["name"], user)
+
+    # not changing name of server
+    else: 
+      for arg in vars(args):
+          if str(getattr(args, arg)) != "None":
+            if (arg == "ip" or arg == "password"):
+              encMessage = encrypt(str(getattr(args, arg)))
+              doc.update({str(arg): encMessage})
+            else:
+              doc.update({str(arg): str(getattr(args, arg))})
 
 
   
-
 
 

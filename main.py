@@ -183,7 +183,10 @@ async def on_message(message):
                 else:
                     if (msg.content == "y" or msg.content == "Y"):
                         dbupdate(name, args)
-                        success, output, _, _ = dbget(name)
+                        if str(getattr(args, "name")) != "None":
+                            success, output, _, _ = dbget(str(getattr(args, "name")))
+                        else:
+                            success, output, _, _ = dbget(name)
                         if success:
                             embed = discord.Embed(title = "Updated Server", description = f"```yaml\n{output}```", color = get_color("green"))
                             await channel.send(embed = embed)
@@ -191,7 +194,7 @@ async def on_message(message):
                             embed = discord.Embed(description = wrap_message("Error updating server info!"), color = get_color("red"))
                             await channel.send(embed = embed)  
                     else:
-                        embed = discord.Embed(description = wrap_message("Cancled server delete request"), color = get_color("red"))
+                        embed = discord.Embed(description = wrap_message("Cancled server update request"), color = get_color("red"))
                         await channel.send(embed = embed) 
 
             else:
